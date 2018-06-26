@@ -2,12 +2,11 @@
 package dynamodbinsert
 
 import (
-	"encoding/json"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 	"github.com/TIBCOSoftware/flogo-lib/core/activity"
 	"github.com/TIBCOSoftware/flogo-lib/logger"
@@ -45,7 +44,7 @@ func (a *MyActivity) Metadata() *activity.Metadata {
 // RecordAttribute is a structure representing the JSON payload for the record syntax
 type RecordAttribute struct {
 	Name  string
-	Value string
+	Value interface{}
 }
 
 // Eval implements activity.Activity.Eval
@@ -54,7 +53,7 @@ func (a *MyActivity) Eval(context activity.Context) (done bool, err error) {
 	// Get the inputs
 	awsRegion := context.GetInput(ivAwsRegion).(string)
 	dynamoDBTableName := context.GetInput(ivDynamoDBTableName).(string)
-	dynamoDBRecord := context.GetInput(ivDynamoDBRecord)
+	recordAttributes := context.GetInput(ivDynamoDBRecord).([]RecordAttribute)
 
 	// AWS Credentials, only if needed
 	var awsAccessKeyID, awsSecretAccessKey = "", ""
@@ -87,12 +86,18 @@ func (a *MyActivity) Eval(context activity.Context) (done bool, err error) {
 	dynamoService := dynamodb.New(awsSession)
 
 	// Construct the expression attributes from the JSON payload
-	var recordAttributes []RecordAttribute
-	json.Unmarshal([]byte(dynamoDBRecord.(string)), &recordAttributes)
+	//var recordAttributes []RecordAttribute
+	//json.Unmarshal([]byte(dynamoDBRecord.(string)), &recordAttributes)
 
 	recordAttributeMap := make(map[string]*dynamodb.AttributeValue)
 	for _, attribute := range recordAttributes {
-		recordAttributeMap[attribute.Name] = &dynamodb.AttributeValue{S: aws.String(attribute.Value)}
+		dav, err := dynamodbattribute.Marshal(attribute.Value)
+		recordAttributeMap[attribute.Name] = dav
+		if err != nil {
+			log.Errorf("DynamoDB Marshal Error [%v]", err)
+			return false, err
+		}
+		// recordAttributeMap[attribute.Name] = &dynamodb.AttributeValue{S: aws.String(attribute.Value)}
 	}
 
 	// Construct the DynamoDB Input
