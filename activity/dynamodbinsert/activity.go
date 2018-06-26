@@ -41,19 +41,13 @@ func (a *MyActivity) Metadata() *activity.Metadata {
 	return a.metadata
 }
 
-// RecordAttribute is a structure representing the JSON payload for the record syntax
-type RecordAttribute struct {
-	Name  string
-	Value interface{}
-}
-
 // Eval implements activity.Activity.Eval
 func (a *MyActivity) Eval(context activity.Context) (done bool, err error) {
 
 	// Get the inputs
 	awsRegion := context.GetInput(ivAwsRegion).(string)
 	dynamoDBTableName := context.GetInput(ivDynamoDBTableName).(string)
-	recordAttributes := context.GetInput(ivDynamoDBRecord).([]RecordAttribute)
+	record := context.GetInput(ivDynamoDBRecord).(map[string]interface{})
 
 	// AWS Credentials, only if needed
 	var awsAccessKeyID, awsSecretAccessKey = "", ""
@@ -90,13 +84,14 @@ func (a *MyActivity) Eval(context activity.Context) (done bool, err error) {
 	//json.Unmarshal([]byte(dynamoDBRecord.(string)), &recordAttributes)
 
 	recordAttributeMap := make(map[string]*dynamodb.AttributeValue)
-	for _, attribute := range recordAttributes {
-		dav, err := dynamodbattribute.Marshal(attribute.Value)
-		recordAttributeMap[attribute.Name] = dav
+	for k, v := range record {
+		dav, err := dynamodbattribute.Marshal(v)
+
 		if err != nil {
 			log.Errorf("DynamoDB Marshal Error [%v]", err)
 			return false, err
 		}
+		recordAttributeMap[k] = dav
 		// recordAttributeMap[attribute.Name] = &dynamodb.AttributeValue{S: aws.String(attribute.Value)}
 	}
 

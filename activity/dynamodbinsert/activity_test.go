@@ -53,38 +53,23 @@ func TestEval(t *testing.T) {
 	//setup attrs
 	// To test this example, you can create a dynamodb with table name Music
 	// where the key is called Artist
-	tc.SetInput("awsAccessKeyID", "YOUR_AWS_KEY")
-	tc.SetInput("awsSecretAccessKey", "YOUR_AWS_SECRET")
+	tc.SetInput("awsAccessKeyID", "")
+	tc.SetInput("awsSecretAccessKey", "")
 	tc.SetInput("awsRegion", "eu-west-1")
 	tc.SetInput("DynamoDBTableName", "Device")
 
-	payload := []RecordAttribute{
-		RecordAttribute{
-			Name:  "ID",
-			Value: "Test66",
-		},
-		RecordAttribute{
-			Name:  "Chain_Address",
-			Value: "multi_chain_address666",
-		},
-		RecordAttribute{
-			Name:  "Latitude",
-			Value: 45.5,
-		},
-		RecordAttribute{
-			Name:  "Longitude",
-			Value: 2.43,
-		},
-		RecordAttribute{
-			Name:  "MeasureTypes",
-			Value: [2]string{"temperature", "humidity"},
-		},
-	}
+	var r map[string]interface{}
+	r = make(map[string]interface{})
+	r["ID"] = "Test66"
+	r["Chain_Address"] = "mc_address_6666"
+	r["Latitude"] = 42.76
+	r["Longitude"] = 4.55
+	r["MeasureTypes"] = [2]string{"temperature", "humidity"}
 
 	// b, _ := json.Marshal(payload)
 
 	// tc.SetInput("DynamoDBRecord", string(b))
-	tc.SetInput("DynamoDBRecord", payload)
+	tc.SetInput("DynamoDBRecord", r)
 	act.Eval(tc)
 
 	//check result attr
