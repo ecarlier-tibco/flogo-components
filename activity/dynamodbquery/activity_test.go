@@ -42,10 +42,8 @@ return 2 objects, the latter only the John Doe record.
 package dynamodbquery
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/TIBCOSoftware/flogo-contrib/action/flow/test"
@@ -58,8 +56,8 @@ var activityMetadata *activity.Metadata
 const (
 	awsAccessKeyID     = ""
 	awsSecretAccessKey = ""
-	awsDefaultRegion   = ""
-	dynamoDBTableName  = "data"
+	awsDefaultRegion   = "eu-west-1"
+	dynamoDBTableName  = "Device"
 )
 
 func getActivityMetadata() *activity.Metadata {
@@ -88,7 +86,7 @@ func TestCreate(t *testing.T) {
 }
 
 // Test for a single condition string with no filtering
-func TestEvalSingleString(t *testing.T) {
+func TestEval(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -101,25 +99,26 @@ func TestEvalSingleString(t *testing.T) {
 	tc := test.NewTestActivityContext(getActivityMetadata())
 
 	// Set required attributes
-	tc.SetInput("AWSAccessKeyID", awsAccessKeyID)
-	tc.SetInput("AWSSecretAccessKey", awsSecretAccessKey)
-	tc.SetInput("AWSDefaultRegion", awsDefaultRegion)
-	tc.SetInput("DynamoDBTableName", dynamoDBTableName)
-	tc.SetInput("DynamoDBKeyConditionExpression", "itemtype = :itemtype")
+	tc.SetInput("awsAccessKeyID", awsAccessKeyID)
+	tc.SetInput("awsSecretAccessKey", awsSecretAccessKey)
+	tc.SetInput("awsRegion", awsDefaultRegion)
+	tc.SetInput("dynamoDBTableName", dynamoDBTableName)
+	tc.SetInput("dynamoDBKeyConditionExpression", "ID = :id")
 
 	// Prepare the Key Condition Expression as Name/Value pairs
-	a := `[{"Name":":itemtype","Value":"user"}]`
+	var a map[string]interface{}
+	a = make(map[string]interface{})
+	a[":id"] = "Test66"
 
 	// Execute the activity
-	tc.SetInput("DynamoDBExpressionAttributes", a)
+	tc.SetInput("dynamoDBExpressionAttributes", a)
 	act.Eval(tc)
 
 	// Check the result
 	printOutput(tc)
 }
 
-// Test for a multiple condition string with no filtering
-func TestEvalMultiString(t *testing.T) {
+func TestEvalMultiFields(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -132,91 +131,21 @@ func TestEvalMultiString(t *testing.T) {
 	tc := test.NewTestActivityContext(getActivityMetadata())
 
 	// Set required attributes
-	tc.SetInput("AWSAccessKeyID", awsAccessKeyID)
-	tc.SetInput("AWSSecretAccessKey", awsSecretAccessKey)
-	tc.SetInput("AWSDefaultRegion", awsDefaultRegion)
-	tc.SetInput("DynamoDBTableName", dynamoDBTableName)
-	tc.SetInput("DynamoDBKeyConditionExpression", "itemtype = :itemtype and itemid = :itemid")
+	tc.SetInput("awsAccessKeyID", awsAccessKeyID)
+	tc.SetInput("awsSecretAccessKey", awsSecretAccessKey)
+	tc.SetInput("awsRegion", awsDefaultRegion)
+	tc.SetInput("dynamoDBTableName", dynamoDBTableName)
+	tc.SetInput("dynamoDBKeyConditionExpression", "Customer = :cust and Site = :site")
+	tc.SetInput("dynamoDBIndexName", "Customer-Site-index")
 
 	// Prepare the Key Condition Expression as Name/Value pairs
-	a := `[{"Name":":itemtype","Value":"user"},{"Name":":itemid","Value":"57a98d98e4b00679b4a830b2"}]`
+	var a map[string]interface{}
+	a = make(map[string]interface{})
+	a[":cust"] = "Acme Corp"
+	a[":site"] = "Bordeaux"
 
 	// Execute the activity
-	tc.SetInput("DynamoDBExpressionAttributes", a)
-	act.Eval(tc)
-
-	// Check the result
-	printOutput(tc)
-}
-
-// Test for a single condition as JSON object with no filtering
-func TestEvalJSONObject(t *testing.T) {
-
-	defer func() {
-		if r := recover(); r != nil {
-			t.Failed()
-			t.Errorf("panic during execution: %v", r)
-		}
-	}()
-
-	act := NewActivity(getActivityMetadata())
-	tc := test.NewTestActivityContext(getActivityMetadata())
-
-	// Set required attributes
-	tc.SetInput("AWSAccessKeyID", awsAccessKeyID)
-	tc.SetInput("AWSSecretAccessKey", awsSecretAccessKey)
-	tc.SetInput("AWSDefaultRegion", awsDefaultRegion)
-	tc.SetInput("DynamoDBTableName", dynamoDBTableName)
-	tc.SetInput("DynamoDBKeyConditionExpression", "itemtype = :itemtype")
-
-	// Prepare the Key Condition Expression as Name/Value pairs map
-	a := make(map[string]interface{})
-	a["Name"] = ":itemtype"
-	a["Value"] = "user"
-
-	// Execute the activity
-	tc.SetInput("DynamoDBExpressionAttributes", a)
-	act.Eval(tc)
-
-	// Check the result
-	printOutput(tc)
-}
-
-// Test for a multiple condition as JSON array with no filtering
-func TestEvalJSONArray(t *testing.T) {
-
-	defer func() {
-		if r := recover(); r != nil {
-			t.Failed()
-			t.Errorf("panic during execution: %v", r)
-		}
-	}()
-
-	act := NewActivity(getActivityMetadata())
-	tc := test.NewTestActivityContext(getActivityMetadata())
-
-	// Set required attributes
-	tc.SetInput("AWSAccessKeyID", awsAccessKeyID)
-	tc.SetInput("AWSSecretAccessKey", awsSecretAccessKey)
-	tc.SetInput("AWSDefaultRegion", awsDefaultRegion)
-	tc.SetInput("DynamoDBTableName", dynamoDBTableName)
-	tc.SetInput("DynamoDBKeyConditionExpression", "itemtype = :itemtype and itemid = :itemid")
-
-	// Prepare the Key Condition Expression as Name/Value pairs maps
-	a := make([]interface{}, 2)
-
-	b := make(map[string]interface{})
-	b["Name"] = ":itemtype"
-	b["Value"] = "user"
-	a[0] = b
-
-	b = make(map[string]interface{})
-	b["Name"] = ":itemid"
-	b["Value"] = "57a98d98e4b00679b4a830b2"
-	a[1] = b
-
-	// Execute the activity
-	tc.SetInput("DynamoDBExpressionAttributes", a)
+	tc.SetInput("dynamoDBExpressionAttributes", a)
 	act.Eval(tc)
 
 	// Check the result
@@ -229,8 +158,6 @@ func printOutput(tc *test.TestActivityContext) {
 	consumedCapacity := tc.GetOutput("consumedCapacity")
 	fmt.Printf("The ScannedCount of the query was: [%s]\n", scannedCount)
 	fmt.Printf("The ConsumedCapacity of the query was: [%v]\n", consumedCapacity)
-	fmt.Println("The Result of the query was:")
-	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(result)
-	fmt.Println("---")
+	fmt.Printf("The Result of the query was [%v]\n", result)
+
 }
